@@ -1,0 +1,30 @@
+name: Build Windows exe
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt pyinstaller
+      - name: Build full app
+        run: pyinstaller --noconfirm --windowed --name ElgansitoDemolisherMacro --icon icon.ico --collect-all winrt --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 --hidden-import win32com.client --hidden-import pythoncom app.py
+      - name: Build Lite
+        run: pyinstaller --noconfirm --windowed --name ElgansitoLite --icon icon.ico --collect-all winrt --hidden-import pynput.keyboard._win32 --hidden-import pynput.mouse._win32 --hidden-import win32com.client --hidden-import pythoncom lite.py
+      - name: Copy templates and assets
+        shell: pwsh
+        run: |
+          foreach ($n in "ElgansitoDemolisherMacro","ElgansitoLite") {
+            Copy-Item templates "dist/$n/templates" -Recurse
+            Copy-Item assets "dist/$n/assets" -Recurse
+            Compress-Archive "dist/$n/*" "$n-windows.zip"
+          }
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-builds
+          path: "*-windows.zip"
